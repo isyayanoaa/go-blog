@@ -1,80 +1,120 @@
 package router
 
 import (
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	redisstore "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/isyayanoaa/go-blog/internal/config"
+	"github.com/isyayanoaa/go-blog/internal/handler"
+	"github.com/isyayanoaa/go-blog/internal/middleware"
 )
 
 func Setup() *gin.Engine {
 	r := gin.Default()
 
+	// CORS
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+
+	// Session (Redis)
+	rc := config.C.Redis
+	store, err := redisstore.NewStore(10,
+		"tcp", fmt.Sprintf("%s:%d", rc.Host, rc.Port), "", rc.Password,
+		[]byte("secret-key-32bytes-padded-123456"),
+	)
+	if err != nil {
+		panic("redis store init failed: " + err.Error())
+	}
+	store.Options(sessions.Options{
+		HttpOnly: true,
+		// Secure: true, // 上线后开启（需要 HTTPS）
+		MaxAge: 86400 * 7, // 7天
+	})
+	r.Use(sessions.Sessions("goblog_session", store))
+
+	// Static uploads
+	r.Static("/uploads", "./uploads")
+
 	api := r.Group("/api/v1")
 	{
-		// Auth
 		auth := api.Group("/auth")
 		{
-			auth.GET("/github", nil)          // GitHub OAuth 跳转
-			auth.GET("/github/callback", nil) // GitHub OAuth 回调
-			auth.POST("/logout", nil)         // 登出
-			auth.GET("/me", nil)              // 获取当前用户信息
+			auth.GET("/github", handler.GithubLogin)
+			auth.GET("/github/callback", handler.GithubCallback)
+			auth.POST("/logout", handler.Logout)
+			auth.GET("/me", handler.GetMe)
 		}
 
-		// Posts
 		posts := api.Group("/posts")
 		{
-			posts.GET("", nil)          // 文章列表
-			posts.GET("/:id", nil)      // 文章详情
-			posts.POST("", nil)         // 发布文章（管理员）
-			posts.PUT("/:id", nil)      // 编辑文章（管理员）
-			posts.DELETE("/:id", nil)   // 删除文章（管理员）
+			// 公开：任何人可读
+			posts.GET("", handler.GetPosts)
+			posts.GET("/:id", handler.GetPost)
+			// 写操作：仅 admin
+			adminPosts := posts.Group("", middleware.AdminRequired())
+			{
+				adminPosts.POST("", handler.CreatePost)
+				adminPosts.PUT("/:id", handler.UpdatePost)
+				adminPosts.DELETE("/:id", handler.DeletePost)
+			}
 		}
 
-		// Categories
-		categories := api.Group("/categories")
-		{
-			categories.GET("", nil)         // 分类列表
-			categories.GET("/:name", nil)   // 某分类下的文章
-		}
+		api.GET("/categories", handler.GetCategories)
+		api.GET("/categories/:name", func(c *gin.Context) {
+			c.Request.URL.RawQuery = "category=" + c.Param("name")
+			handler.GetPosts(c)
+		})
+		api.GET("/tags", handler.GetTags)
+		api.GET("/tags/:name", func(c *gin.Context) {
+			c.Request.URL.RawQuery = "tag=" + c.Param("name")
+			handler.GetPosts(c)
+		})
+		api.GET("/archives", handler.GetArchives)
 
-		// Tags
-		tags := api.Group("/tags")
-		{
-			tags.GET("", nil)        // 标签列表
-			tags.GET("/:name", nil)  // 某标签下的文章
-		}
-
-		// Archives
-		api.GET("/archives", nil) // 归档列表
-
-		// Moments
 		moments := api.Group("/moments")
 		{
-			moments.GET("", nil)         // 动态列表
-			moments.GET("/:id", nil)     // 动态详情
-			moments.POST("", nil)        // 发布动态（管理员）
-			moments.DELETE("/:id", nil)  // 删除动态（管理员）
+			// 公开：任何人可读
+			moments.GET("", handler.GetMoments)
+			// 写操作：仅 admin
+			adminMoments := moments.Group("", middleware.AdminRequired())
+			{
+				adminMoments.POST("", handler.CreateMoment)
+				adminMoments.DELETE("/:id", handler.DeleteMoment)
+			}
 		}
 
-		// Comments
 		comments := api.Group("/comments")
 		{
-			comments.GET("", nil)         // 评论列表（by post_id 或 moment_id）
-			comments.POST("", nil)        // 发布评论（登录用户）
-			comments.DELETE("/:id", nil)  // 删除评论（管理员）
+			// 公开：任何人可读、可发评论（登录用户）
+			comments.GET("", handler.GetComments)
+			comments.POST("", middleware.LoginRequired(), handler.CreateComment)
+			// 删评论：仅 admin
+			comments.DELETE("/:id", middleware.AdminRequired(), handler.DeleteComment)
 		}
 
-		// Likes
 		likes := api.Group("/likes")
 		{
-			likes.POST("", nil)    // 点赞
-			likes.DELETE("", nil)  // 取消点赞
+			likes.POST("", handler.AddLike)
+			likes.DELETE("", handler.RemoveLike)
 		}
 
-		// Playground
-		api.POST("/playground/run", nil) // 运行 Go 代码（管理员）
-
-		// Upload
-		api.POST("/upload", nil) // 上传文件（管理员）
+		api.POST("/playground/run", handler.RunPlayground)
+		api.POST("/upload", middleware.AdminRequired(), handler.Upload)
 	}
+
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
 
 	return r
 }

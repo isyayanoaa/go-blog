@@ -1,19 +1,24 @@
 package model
 
-import "time"
+import (
+	"time"
 
+	"github.com/lib/pq"
+)
+
+// Post 是数据库实体，对应 posts 表
 type Post struct {
-	ID          uint      `json:"id" db:"id"`
-	Title       string    `json:"title" db:"title"`
-	Slug        string    `json:"slug" db:"slug"`
-	Content     string    `json:"content" db:"content"`
-	Summary     string    `json:"summary" db:"summary"`
-	Cover       string    `json:"cover" db:"cover"`
-	Category    string    `json:"category" db:"category"`
-	Tags        []string  `json:"tags" db:"tags"`
-	Status      string    `json:"status" db:"status"` // published | draft
-	LikeCount   int       `json:"like_count" db:"like_count"`
-	ViewCount   int       `json:"view_count" db:"view_count"`
-	CreatedAt   time.Time `json:"created_at" db:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at" db:"updated_at"`
+	ID        uint           `gorm:"primaryKey" json:"id"`
+	Title     string         `gorm:"not null" json:"title"`
+	Slug      string         `gorm:"uniqueIndex" json:"slug"`
+	Content   string         `json:"content"`
+	Summary   string         `json:"summary"`
+	Cover     string         `json:"cover"`
+	Category  string         `json:"category"`
+	Tags      pq.StringArray `gorm:"type:text[]" json:"tags"`
+	Status    string         `gorm:"default:draft" json:"status"`
+	LikeCount int            `gorm:"default:0" json:"like_count"`
+	ViewCount int            `gorm:"default:0" json:"view_count"`
+	CreatedAt time.Time      `json:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at"`
 }

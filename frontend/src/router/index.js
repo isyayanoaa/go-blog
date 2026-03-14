@@ -11,6 +11,8 @@ const routes = [
   { path: '/tags/:name',          component: () => import('../pages/Tags.vue') },
   { path: '/archives',            component: () => import('../pages/Archives.vue') },
   { path: '/about',               component: () => import('../pages/About.vue') },
+  { path: '/write',               component: () => import('../pages/Write.vue') },
+  { path: '/write/:id',           component: () => import('../pages/Write.vue') },
 ]
 
 export default createRouter({
