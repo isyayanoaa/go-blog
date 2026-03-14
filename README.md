@@ -12,6 +12,7 @@
 | 数据库 | PostgreSQL |
 | 缓存 / Session | Redis |
 | 前端 | Vue 3 + Vite |
+| UI | Tailwind CSS + Naive UI |
 | 部署 | 云服务器 + Nginx 反向代理 |
 
 ---
@@ -90,6 +91,76 @@
 /tags/:name          某标签下的文章
 /archives            按年/月归档
 /about               关于我
+```
+
+---
+
+## 目录结构
+
+```
+go-blog/
+├── backend/                 # Go 后端
+│   ├── cmd/
+│   │   └── server/
+│   │       └── main.go      # 入口
+│   ├── internal/
+│   │   ├── config/          # 配置加载
+│   │   ├── handler/         # HTTP 路由处理器
+│   │   │   ├── auth.go
+│   │   │   ├── post.go
+│   │   │   ├── moment.go
+│   │   │   ├── comment.go
+│   │   │   └── like.go
+│   │   ├── middleware/      # 中间件（鉴权、CORS 等）
+│   │   ├── model/           # 数据库模型
+│   │   │   ├── user.go
+│   │   │   ├── post.go
+│   │   │   ├── moment.go
+│   │   │   ├── comment.go
+│   │   │   └── like.go
+│   │   ├── repository/      # 数据库操作层
+│   │   ├── service/         # 业务逻辑层
+│   │   └── router/          # 路由注册
+│   ├── pkg/
+│   │   ├── database/        # PostgreSQL 连接
+│   │   ├── redis/           # Redis 连接
+│   │   └── playground/      # Go Playground API 封装
+│   ├── migrations/          # 数据库迁移 SQL
+│   ├── uploads/             # 上传文件存储目录
+│   ├── go.mod
+│   ├── go.sum
+│   └── config.yaml.example  # 配置文件示例
+│
+├── frontend/                # Vue 3 前端
+│   ├── src/
+│   │   ├── api/             # 后端 API 请求封装
+│   │   ├── assets/          # 静态资源
+│   │   ├── components/      # 公共组件
+│   │   │   ├── PostCard.vue
+│   │   │   ├── MomentCard.vue
+│   │   │   ├── CommentList.vue
+│   │   │   └── MarkdownEditor.vue
+│   │   ├── layouts/         # 页面布局
+│   │   ├── pages/           # 页面组件
+│   │   │   ├── Home.vue
+│   │   │   ├── Posts.vue
+│   │   │   ├── PostDetail.vue
+│   │   │   ├── Moments.vue
+│   │   │   ├── Categories.vue
+│   │   │   ├── Tags.vue
+│   │   │   ├── Archives.vue
+│   │   │   └── About.vue
+│   │   ├── router/          # Vue Router
+│   │   ├── stores/          # Pinia 状态管理（用户信息等）
+│   │   └── main.js
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+│
+├── docker-compose.yml       # 本地开发环境（PostgreSQL + Redis）
+├── .gitignore
+└── README.md
 ```
 
 ---

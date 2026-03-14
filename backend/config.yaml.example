@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  user: postgres
+  password: your_password
+  dbname: goblog
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+
+github:
+  client_id: your_github_client_id
+  client_secret: your_github_client_secret
+  redirect_url: http://localhost:8080/api/v1/auth/github/callback
+  admin_github_id: your_github_user_id  # 只有这个 ID 才是管理员
